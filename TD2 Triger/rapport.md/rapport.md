@@ -1,4 +1,31 @@
--- exercice 1 question A
+# Compte rendu TD2 & TD3
+## R3.07 SQL dans un langage de programmation
+
+### TD2 : TRIGGER
+
+*Liste des triggers*
+
+| Nom Trigger                | Type : before ou after | Insert, delete, update | Nom table | For each row : oui ou non |
+|----------------------------|------------------------|------------------------|-----------|---------------------------|
+| empecher_diminution_salaire | after                  | update                 | employe   | oui                       |
+| empecher_augmentation_hebdo | after                  | update                 | employe   | oui                       |
+| supprimer_employe           | before                 | delete                 | employe   | non                       |
+| supprimer_projet            | before                 | delete                 | projet    | non                       |
+| check_duree_insert          | before                 | insert                 | travail   | oui                       |
+| check_duree_update          | before & after         | update                 | travail   | oui                       |
+| check_hebdo_update          | before                 | update                 | employe   | oui                       |
+| check_responsable_projets   | before                 | insert & update        | projet    | oui                       |
+| check_service_projets       | before                 | insert & update        | concerne  | oui                       |
+| check_chef_salaire          | before                 | insert & update        | employe   | oui                       |
+| alerte_salaire              | before                 | insert & update        | employe   | oui                       |
+
+
+### Exercice 1 :
+
+**A. Jeux d'essai pour le trigger empecher_diminution_salaire**
+
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER empecher_diminution_salaire
 AFTER UPDATE OF salaire ON employe
 FOR EACH ROW
@@ -7,13 +34,18 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20001, 'Vous ne pouvez pas diminuier le salaire de l''employer');
     END IF;
 END;
-
--- Jeux d'essai pour le trigger empecher_diminution_salaire
--- Cas où la diminution du salaire est interdite
+```
+*Cas de test pour déclancher le trigger :*
+```sql
 UPDATE employe SET salaire = salaire - 100 WHERE NUEMPL = 20;
+```
 
+Résultat attendu : Une erreur est déclenchée car le salaire ne peut pas être diminué.
 
--- exercice 1 question B
+**B. Jeux d'essai pour le trigger empecher_augmentation_hebdo**
+
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER empecher_augmentation_hebdo
 AFTER UPDATE OF HEBDO ON employe
 FOR EACH ROW
@@ -22,12 +54,20 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20002, 'Vous ne pouvez pas augmenter la durée hebdomadaire de l''employé');
     END IF;
 END;
+```
 
--- Jeux d'essai pour le trigger empecher_augmentation_hebdo
--- Cas où l'augmentation de la durée hebdomadaire est interdite
+*Cas de test pour déclancher le trigger :*
+
+```sql
 UPDATE employe SET HEBDO = HEBDO + 1 WHERE NUEMPL = 20;
+```
+Résultat attendu : Une erreur est déclenchée car la durée hebdomadaire ne peut pas être augmentée.
 
--- exercice 2 question A
+### Exercice 2 :
+**A. Cas où la suppression de l'employé est interdite :**
+
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER supprimer_employe
 BEFORE DELETE ON employe
 DECLARE
@@ -48,16 +88,24 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20005, 'Aucune ligne n''a été supprimée car l''employé est soit chef de projet soit chef de service, ou n''a pas de travail associé.');
     END IF;
 END;
+```
 
-
--- Cas où la suppression de l'employé est interdite car il est chef de service
+*Cas de test pour déclancher le trigger :*
+```sql
 DELETE FROM employe WHERE NUEMPL = 41;
+```
+Résultat attendu : Une erreur est déclenchée car l'employé est chef de service.
 
--- Cas où la suppression de l'employé est interdite car il est responsable de projet
+*Cas de test pour déclancher le trigger :*
+```sql
 DELETE FROM employe WHERE NUEMPL = 30;
-DELETE FROM employe WHERE NUEMPL = 14;
+```
+Résultat attendu : Une erreur est déclenchée car l'employé est responsable d'un projet.
 
--- exercice 2 question B
+**B. Vérifier les données avant la suppression du projet :**
+
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER supprimer_projet
 BEFORE DELETE ON projet
 DECLARE
@@ -83,16 +131,38 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20006, 'Aucune ligne supprimée dans travail ou concerne pour ce projet.');
     END IF;
 END;
+```
 
--- Suppression d'un projet (par exemple, Projet Alpha)
+*Cas de test pour déclancher le trigger :*
+
+*Suppression d'un projet (par exemple, Projet 1)*
+```sql
 DELETE FROM projet WHERE NUPROJ = 1;
+```
 
--- Vérification des suppressions dans les autres tables
-SELECT * FROM travail WHERE NUPROJ = 1;  -- Devrait retourner 0 ligne
-SELECT * FROM concerne WHERE NUPROJ = 1;  -- Devrait retourner 0 ligne
+*Vérification des suppressions dans les autres tables*
+*Devrait retourner 0 ligne*
+```sql
+SELECT * FROM travail WHERE NUPROJ = 1; 
+SELECT * FROM concerne WHERE NUPROJ = 1; 
+```
+Résultat attendu : Les lignes associées au projet supprimé sont également supprimées dans les tables travail et concerne.
 
+### Exercice 3 :
+**A - La somme des durées de travail d'un
+employé ne doit pas excéder son temps de travail hebdomadaire**
 
--- exercice 3 question A
+Pour vérifier la contrainte **SUM(duree) <= hebdo**, nous devons mettre en place des triggers qui se déclenchent lors des opérations INSERT et UPDATE sur les tables employe et travail.
+
+**Opérations sur la table travail :**
+
+* INSERT : Lorsqu'une nouvelle ligne est insérée dans la table travail, nous devons vérifier que la somme des durées de travail de l'employé ne dépasse pas son temps de travail hebdomadaire.
+* UPDATE : Lorsqu'une ligne existante est mise à jour dans la table travail, nous devons vérifier que la somme des durées de travail de l'employé ne dépasse pas son temps de travail hebdomadaire.
+Opérations sur la table employe :
+* UPDATE : Lorsqu'un employé met à jour son temps de travail hebdomadaire (hebdo), nous devons vérifier que la somme des durées de travail de l'employé ne dépasse pas son nouveau temps de travail hebdomadaire.
+
+*Triggers :*
+```sql
 CREATE OR REPLACE TRIGGER check_duree_insert
 BEFORE INSERT ON travail
 FOR EACH ROW
@@ -118,10 +188,9 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20005, 'La somme des durées de travail dépasse le temps de travail hebdomadaire.');
     END IF;
 END;
-/
+```
 
-
--- exercice 3 question A
+```sql
 CREATE OR REPLACE TRIGGER check_duree_update
 FOR UPDATE ON travail
 COMPOUND TRIGGER
@@ -166,9 +235,9 @@ COMPOUND TRIGGER
     END AFTER STATEMENT;
 
 END check_duree_update;
-/
+```
 
--- exercice 3 question A
+```sql
 CREATE OR REPLACE TRIGGER check_hebdo_update
 BEFORE UPDATE OF hebdo ON employe
 FOR EACH ROW
@@ -185,20 +254,32 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20007, 'La somme des durées de travail dépasse le nouveau temps de travail hebdomadaire.');
     END IF;
 END;
-/
+```
 
-INSERT INTO TRAVAIL VALUES (20, 237, 90);
-
-UPDATE travail
-SET DUREE = 99
-WHERE NUEMPL = 20 AND NUPROJ = 492;
-
-UPDATE employe
-SET HEBDO = 5
-WHERE NUEMPL = 20;
+*Cas de test pour déclancher le trigger :*
+```sql
+INSERT INTO travail VALUES (20, 237, 90);
+```
+Résultat attendu : Une erreur est déclenchée car la somme des durées de travail dépasse le temps de travail hebdomadaire.
 
 
--- exercice 3 question B
+```sql
+UPDATE travail SET DUREE = 99 WHERE NUEMPL = 20 AND NUPROJ = 492;
+```
+
+Résultat attendu : Une erreur est déclenchée car la somme des durées de travail dépasse le temps de travail hebdomadaire.
+
+
+```sql
+UPDATE employe SET HEBDO = 5 WHERE NUEMPL = 20;
+```
+Résultat attendu : Une erreur est déclenchée car la somme des durées de travail dépasse le nouveau temps de travail hebdomadaire.
+
+**B. Un employé est responable au plus sur 3 projets**
+
+*Trigger :*
+
+```sql
 CREATE OR REPLACE TRIGGER check_responsable_projets
 BEFORE INSERT OR UPDATE OF resp ON projet
 FOR EACH ROW
@@ -221,11 +302,17 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20008, 'Un employé ne peut pas être responsable de plus de 3 projets.');
     END IF;
 END;
-/
+```
 
+*Insertion d'un projet :*
+```sql
 INSERT INTO PROJET VALUES (103, 'Projet 103', 30);
+```
 
--- exercice 3 question C
+**C - Un service ne peut être concerné par plus de 3 projets**
+
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER check_service_projets
 BEFORE INSERT OR UPDATE OF NUSERV ON concerne
 FOR EACH ROW
@@ -248,52 +335,28 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20009, 'Un service ne peut être concerné par plus de 3 projets.');
     END IF;
 END;
-/
+```
 
+*Insertion d'une association de projet avec un service :*
+```sql
 INSERT INTO CONCERNE VALUES (1, 492);
 INSERT INTO CONCERNE VALUES (1, 160);
+```
+Résultat attendu : Le projet est bien associé au service.
 
--- exercice 3 question D
-CREATE OR REPLACE TRIGGER check_chef_salaire
-BEFORE INSERT OR UPDATE OF salaire ON employe
-FOR EACH ROW
-DECLARE
-    v_max_salaire_service NUMBER;
-    v_max_salaire_projet NUMBER;
-    v_nuserv NUMBER;
-BEGIN
-    -- Vérifier si l'employé est un chef de service
-    SELECT COUNT(*) INTO v_nuserv FROM service WHERE chef = :NEW.NUEMPL;
-    IF v_nuserv > 0 THEN
-        -- Obtenir le numéro de service du chef
-        SELECT NUSERV INTO v_nuserv FROM service WHERE chef = :NEW.NUEMPL;
+**D - un chef de service gagne plus que
+les employés de son service**
 
-        -- Obtenir le salaire maximum des employés du service
-        SELECT MAX(salaire) INTO v_max_salaire_service
-        FROM employe
-        WHERE AFFECT = v_nuserv AND NUEMPL != :NEW.NUEMPL;
+**E - un chef de service gagne plus que
+les employés responsables de projets**
 
-        -- Obtenir le salaire maximum des employés responsables de projets
-        SELECT MAX(e.salaire) INTO v_max_salaire_projet
-        FROM employe e
-        JOIN projet p ON e.NUEMPL = p.RESP
-        WHERE e.NUEMPL != :NEW.NUEMPL;
+**F - Est-il possible de regrouper les deux derniers trigger**
 
-        -- Vérifier si le salaire du chef est supérieur aux salaires maximums
-        IF :NEW.salaire <= v_max_salaire_service OR :NEW.salaire <= v_max_salaire_projet THEN
-            RAISE_APPLICATION_ERROR(-20010, 'Le chef de service doit gagner plus que les employés de son service et les employés responsables de projets.');
-        END IF;
-    END IF;
-END ;
-/
+### Exercice 5 :
+**A. Trigger alerte_salaire**
 
-
--- exercice 4
-CREATE TABLE employe_alerte AS
-SELECT *
-FROM employe
-WHERE 1 = 0;
-
+*Trigger :*
+```sql
 CREATE OR REPLACE TRIGGER alerte_salaire
 BEFORE INSERT OR UPDATE OF salaire ON employe
 FOR EACH ROW
@@ -304,10 +367,13 @@ BEGIN
 
     END IF;
 END;
-/
+```
 
+Ce trigger insère une ligne dans la table employe_alerte lorsque le salaire d'un employé dépasse 5000.
 
-update employe set salaire = 20000 where NUEMPL = 41;
+```sql
+INSERT INTO employe (NUEMPL, NOMEMPL, HEBDO, AFFECT, SALAIRE)
+VALUES (50, 'Dupont', 35, 1, 6000);
+```
 
-
-
+Résultat attendu : Une nouvelle ligne est ajoutée dans la table employe_alerte pour cet employé.

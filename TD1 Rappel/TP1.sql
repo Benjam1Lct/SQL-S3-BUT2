@@ -10,11 +10,11 @@ alter table employe add constraint FK_affect foreign key (AFFECT) references ser
 alter table service add constraint PK_service primary key (NUSERV);#
 alter table service add constraint FK_chef foreign key (chef) references employe(NUEMPL) deferrable initially deferred;#
 
-alter table projet add constraint PK_projet primary key (NUPROJ);#
-ALTER TABLE projet ADD CONSTRAINT FK_resp FOREIGN KEY (RESP) REFERENCES employe(NUEMPL);
+alter table projet add constraint PK_projet primary key (NUPROJ);
+ALTER TABLE projet ADD CONSTRAINT FK_resp FOREIGN KEY (RESP) REFERENCES employe(NUEMPL) deferrable initially deferred;
 
-ALTER TABLE travail ADD CONSTRAINT PK_travail PRIMARY KEY (NUEMPL, NUPROJ);#
-ALTER TABLE travail ADD CONSTRAINT FK_employe FOREIGN KEY (NUEMPL) REFERENCES employe(NUEMPL); #
+ALTER TABLE travail ADD CONSTRAINT PK_travail PRIMARY KEY (NUEMPL, NUPROJ);
+ALTER TABLE travail ADD CONSTRAINT FK_employe FOREIGN KEY (NUEMPL) REFERENCES employe(NUEMPL) deferrable initially deferred;
 
 ALTER TABLE concerne ADD CONSTRAINT PK_concerne PRIMARY KEY (NUPROJ, NUSERV);#
 ALTER TABLE concerne ADD CONSTRAINT FK_service FOREIGN KEY (NUSERV) REFERENCES service(NUSERV);
