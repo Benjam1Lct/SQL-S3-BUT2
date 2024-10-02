@@ -45,7 +45,7 @@ BEGIN
 
     -- Si aucune ligne n'a été supprimée, lever une exception
     IF v_deleted_count = 0 THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Aucune ligne n''a été supprimée car l''employé est soit chef de projet soit chef de service, ou n''a pas de travail associé.');
+        RAISE_APPLICATION_ERROR(-20003, 'Aucune ligne n''a été supprimée car l''employé est soit chef de projet soit chef de service, ou n''a pas de travail associé.');
     END IF;
 END;
 
@@ -80,7 +80,7 @@ BEGIN
 
     -- Optionnel: lever une erreur si aucune ligne n'a été supprimée
     IF v_deleted_count_travail = 0 AND v_deleted_count_concerne = 0 THEN
-        RAISE_APPLICATION_ERROR(-20006, 'Aucune ligne supprimée dans travail ou concerne pour ce projet.');
+        RAISE_APPLICATION_ERROR(-20004, 'Aucune ligne supprimée dans travail ou concerne pour ce projet.');
     END IF;
 END;
 
@@ -254,38 +254,28 @@ INSERT INTO CONCERNE VALUES (1, 492);
 INSERT INTO CONCERNE VALUES (1, 160);
 
 -- exercice 3 question D
-CREATE OR REPLACE TRIGGER check_chef_salaire
-BEFORE INSERT OR UPDATE OF salaire ON employe
-FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_check_salaire_chef_service
+AFTER INSERT OR UPDATE OF salaire ON employe
+
 DECLARE
-    v_max_salaire_service NUMBER;
-    v_max_salaire_projet NUMBER;
-    v_nuserv NUMBER;
+    ligne_chef employe%ROWTYPE;
 BEGIN
-    -- Vérifier si l'employé est un chef de service
-    SELECT COUNT(*) INTO v_nuserv FROM service WHERE chef = :NEW.NUEMPL;
-    IF v_nuserv > 0 THEN
-        -- Obtenir le numéro de service du chef
-        SELECT NUSERV INTO v_nuserv FROM service WHERE chef = :NEW.NUEMPL;
+    -- Rechercher les chefs de service gagnant moins que les employés de leur service
+    SELECT * INTO ligne_chef
+    FROM employe e
+    WHERE e.salaire <= (SELECT MAX(salaire) FROM employe emp WHERE emp.affect = e.affect AND emp.nuempl != e.nuempl)
+    AND EXISTS (SELECT 1 FROM service s WHERE s.chef = e.nuempl);
 
-        -- Obtenir le salaire maximum des employés du service
-        SELECT MAX(salaire) INTO v_max_salaire_service
-        FROM employe
-        WHERE AFFECT = v_nuserv AND NUEMPL != :NEW.NUEMPL;
-
-        -- Obtenir le salaire maximum des employés responsables de projets
-        SELECT MAX(e.salaire) INTO v_max_salaire_projet
-        FROM employe e
-        JOIN projet p ON e.NUEMPL = p.RESP
-        WHERE e.NUEMPL != :NEW.NUEMPL;
-
-        -- Vérifier si le salaire du chef est supérieur aux salaires maximums
-        IF :NEW.salaire <= v_max_salaire_service OR :NEW.salaire <= v_max_salaire_projet THEN
-            RAISE_APPLICATION_ERROR(-20010, 'Le chef de service doit gagner plus que les employés de son service et les employés responsables de projets.');
-        END IF;
-    END IF;
-END ;
+    -- Lever une exception si un enregistrement est trouvé
+    RAISE_APPLICATION_ERROR(-20009, 'Le chef de service doit gagner plus que les employés de son service.');
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        NULL;  -- Aucune violation trouvée
+    WHEN TOO_MANY_ROWS THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Plusieurs chefs de service gagnent moins que leurs employés.');
+END;
 /
+
 
 
 -- exercice 4
