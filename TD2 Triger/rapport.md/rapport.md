@@ -504,7 +504,9 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
         ELSE  RAISE_APPLICATION_ERROR(-20999,'Erreur inconnue ' || SQLCODE || ' : ' || SQLERRM);
         END IF;
     END CREER_EMPLOYE;
-
+    
+--------------------------------------------------------------------------------------------------------------
+    -- procedure 1
    PROCEDURE MODIFIER_DUREE_HEBDO(LE_NUEMPL IN NUMBER, LA_NOUVELLE_DUREE IN NUMBER) IS
    BEGIN
       UPDATE employe
@@ -528,7 +530,8 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
    END MODIFIER_DUREE_HEBDO;
 
 --------------------------------------------------------------------------------------------------------------
-
+    
+       -- procedure 2
        PROCEDURE MODIFIER_SALAIRE(LE_NUEMPL IN NUMBER, LE_NOUVEAU_SALAIRE IN NUMBER) IS
    BEGIN
       UPDATE employe
@@ -554,7 +557,7 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
 
 --------------------------------------------------------------------------------------------------------------
 
-
+    -- procedure 3
     PROCEDURE MODIFIER_DUREE_TRAVAIL(LE_NUEMPL IN NUMBER, LE_NUPROJ IN NUMBER, LA_NOUVELLE_DUREE IN NUMBER) IS
    BEGIN
       UPDATE travail
@@ -577,6 +580,7 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
 
 --------------------------------------------------------------------------------------------------------------
 
+       -- procedure 4
        PROCEDURE INSERER_TRAVAIL(LE_NUEMPL IN NUMBER, LE_NUPROJ IN NUMBER, LA_DUREE IN NUMBER) IS
    BEGIN
       INSERT INTO travail (nuempl, nuproj, duree)
@@ -598,7 +602,7 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
 
 --------------------------------------------------------------------------------------------------------------
 
-
+    -- procedure 5
        PROCEDURE AJOUTER_SERVICE(LE_NUSERV IN NUMBER, LE_NOMSERV IN VARCHAR2, LE_CHEF IN NUMBER) IS
    BEGIN
       INSERT INTO service (nuserv, nomserv, chef)
@@ -625,7 +629,16 @@ CREATE OR REPLACE PACKAGE BODY MAJ IS
 END MAJ;
 ```
 
-#### Procedure n°1 :  Modification de la durée hebdomadaire de la table « employe »
+### Procedure n°1 : Modification de la durée hebdomadaire de la table « employe »
+| Code erreur Oracle | Code erreur retourné | Message d'erreur personnalisé                                                                       |
+|--------------------|----------------------|-----------------------------------------------------------------------------------------------------|
+| ORA-20002          | -20101               | Aucun employé trouvé avec ce numéro.                                                                |
+| ORA-20002          | -20102               | Durée hebdomadaire non modifiable : Vous ne pouvez pas augmenter la durée hebdomadaire de l'employé. |
+| ORA-20002          | -20112               | Durée hebdomadaire non modifiable |
+| ORA-20999          | -20999               | Erreur inconnue : Erreur non prévue capturée dans la procédure.                                     |
+
+_Tests :_
+
 ```sql
 BEGIN
    MAJ.MODIFIER_SALAIRE(1, 35);  -- Il n'y a pas d'employé
@@ -644,3 +657,34 @@ BEGIN
 END;
 /
 ```
+
+### Procedure n°2 : Modification du salaire d’un employé.
+| Code erreur Oracle | Code erreur retourné | Message d'erreur personnalisé                                              |
+|--------------------|----------------------|-----------------------------------------------------------------------------|
+| ORA-20001          | -20101               | Aucun employé trouvé avec ce numéro.     |
+| ORA-20001          | -20103               | Impossible de diminuer le salaire |
+| ORA-20009          | -20104                | Le chef de service doit gagner plus que les employés de son service.         |
+| ORA-20999          | -20999               | Erreur inconnue : Erreur non prévue capturée dans la procédure.              |
+
+### Procedure n°3 : Modification de la durée de la table travail correspondant à un ''nuempl'' et ''nuproj''.
+| Code erreur Oracle | Code erreur retourné | Message d'erreur personnalisé                                             |
+|--------------------|----------------------|----------------------------------------------------------------------------|
+| ORA-20003          | -20105               | Aucun enregistrement trouvé pour cet employé et projet. |
+| ORA-20003          | -20106               | Erreur lors de la suppression de l'employé |
+| ORA-20999          | -20999               | Erreur inconnue : Erreur non prévue capturée dans la procédure.             |
+
+### Procedure n°4 : Insertion d’un enregistrement dans la table travail.
+| Code erreur Oracle | Code erreur retourné | Message d'erreur personnalisé                                               |
+|--------------------|----------------------|------------------------------------------------------------------------------|
+| ORA-20009          | -20107               | Insertion échouée pour cet employé et projet.                       |
+| ORA-20009          | -20108               | Un service ne peut être concerné par plus de 3 projets.                       |
+| ORA-20999          | -20999               | Erreur inconnue : Erreur non prévue capturée dans la procédure.               |
+
+### Procedure n°5 : Ajout d’un enregistrement dans la table service. Dans ce cas vous affectez le chef dans ce service avec un insert ou un update d’un employé qui existe déjà.
+| Code erreur Oracle | Code erreur retourné | Message d'erreur personnalisé                                               |
+|--------------------|----------------------|------------------------------------------------------------------------------|
+| ORA-20009          | -20110               | Le chef de service doit gagner plus que les employés de son service.          |
+| ORA-20999          | -20999               | Erreur inconnue : Erreur non prévue capturée dans la procédure.               |
+
+
+
